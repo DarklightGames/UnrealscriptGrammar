@@ -206,7 +206,7 @@ namespace Unrealscript
 
             var SuperCall = new NonTerminal("SuperCall");
             SuperCall.Rule = ToTerm("super") + "." + Call |
-                             ToTerm("super") + "(" + Identifier + ")" + Call;
+                             ToTerm("super") + "(" + Identifier + ")" + "." + Call;
 
             var StaticCall = new NonTerminal("StaticCall");
             StaticCall.Rule = Primary + "." + ToTerm("static") + "." + Call |
@@ -323,7 +323,7 @@ namespace Unrealscript
 
             var SwitchCase = new NonTerminal("SwitchCase");
             SwitchCase.Rule = ToTerm("case") + Atom + ":" + Statements |
-                              ToTerm("default") + ":" + Statements;
+                              ToTerm("default:") + Statements;
 
             var SwitchCases = new NonTerminal("SwitchCase*");
             SwitchCases.Rule = MakeStarRule(SwitchCases, SwitchCase);
