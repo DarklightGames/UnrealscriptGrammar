@@ -46,6 +46,7 @@
     <Compile Include="Ast\Class.cs" />
     <Compile Include="Ast\ClassDeclaration.cs" />
     <Compile Include="Ast\Const.cs" />
+    <Compile Include="Ast\DefaultProperties.cs" />
     <Compile Include="Ast\Enum.cs" />
     <Compile Include="Ast\Function.cs" />
     <Compile Include="Ast\FunctionArgument.cs" />

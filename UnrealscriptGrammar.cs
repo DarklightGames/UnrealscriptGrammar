@@ -411,6 +411,40 @@ namespace Unrealscript
                 NativeReplicationKeyTerm |
                 NoExportKeyTerm;
 
+            #region DefaultProperties
+
+            var DefaultPropertiesKey = new NonTerminal("DefaultPropertiesKey");
+            var DefaultPropertiesAssignmentValue = new NonTerminal("DefaultPropertiesAssignmentValue");
+            var DefaultPropertiesAssignment = new NonTerminal("DefaultPropertiesAssignment");
+            var DefaultPropertiesAssignments = new NonTerminal("DefaultPropertiesAssignments", typeof(AuxiliaryNode));
+            var DefaultPropertiesObjectArguments = new NonTerminal("DefaultPropertiesObjectArguments", typeof(AuxiliaryNode));
+            var DefaultPropertiesArrayArgument = new NonTerminal("DefaultPropertiesArrayArgument");
+            var DefaultPropertiesArrayArguments = new NonTerminal("DefaultPropertiesArrayArguments", typeof(AuxiliaryNode));
+            var DefaultPropertiesArray = new NonTerminal("DefaultPropertiesArray");
+            var DefaultPropertiesDeclaration = new NonTerminal("DefaultPropertiesDeclaration");
+            var DefaultPropertiesDeclarations = new NonTerminal("DefaultPropertiesDeclarations", typeof(AuxiliaryNode));
+            var DefaultPropertiesObject = new NonTerminal("DefaultPropertiesObject");
+            var DefaultPropertiesObjectAssignment = new NonTerminal("DefaultPropertiesObjectAssignment");
+            var DefaultPropertiesObjectAssignments = new NonTerminal("DefaultPropertiesObjectAssignments", typeof(AuxiliaryNode));
+            var DefaultProperties = new NonTerminal("DefaultProperties", typeof(DefaultProperties));
+
+            DefaultPropertiesKey.Rule = Identifier | Identifier + "(" + Integer + ")";
+            DefaultPropertiesObjectAssignment.Rule = DefaultPropertiesKey + "=" + DefaultPropertiesAssignmentValue;
+            DefaultPropertiesObjectAssignments.Rule = MakeStarRule(DefaultPropertiesObjectAssignments, DefaultPropertiesObjectAssignment);
+            DefaultPropertiesObject.Rule = ToTerm("Begin") + ToTerm("Object") + DefaultPropertiesObjectAssignments + ToTerm("End") + ToTerm("Object");
+            DefaultPropertiesDeclaration.Rule = DefaultPropertiesAssignment | DefaultPropertiesObject;
+            DefaultPropertiesDeclarations.Rule = MakeStarRule(DefaultPropertiesDeclarations, DefaultPropertiesDeclaration);
+            DefaultPropertiesAssignmentValue.Rule = Literal | Reference | Identifier | DefaultPropertiesObjectArguments | DefaultPropertiesArray;
+            DefaultPropertiesAssignment.Rule = DefaultPropertiesKey + "=" + DefaultPropertiesAssignmentValue;
+            DefaultPropertiesAssignments.Rule = MakeStarRule(DefaultPropertiesAssignments, ToTerm(","), DefaultPropertiesAssignment);
+            DefaultPropertiesObjectArguments.Rule = "(" + DefaultPropertiesAssignments + ")";
+            DefaultPropertiesArrayArgument.Rule = DefaultPropertiesObjectArguments |
+                                                  DefaultPropertiesArrayArguments + "," + DefaultPropertiesObjectArguments;
+            DefaultPropertiesArrayArguments.Rule = MakeStarRule(DefaultPropertiesArrayArguments, ToTerm(","), DefaultPropertiesArrayArgument);
+            DefaultPropertiesArray.Rule = "(" + DefaultPropertiesArrayArguments + ")";
+            DefaultProperties.Rule = Empty | ToTerm("defaultproperties") + "{" + DefaultPropertiesDeclarations + "}";
+            #endregion
+
             var ClassModifiers = new NonTerminal("ClassModifiers", typeof(AuxiliaryNode));
             ClassModifiers.Rule = MakeStarRule(ClassModifiers, ClassModifier);
 
@@ -418,13 +452,13 @@ namespace Unrealscript
             ClassDeclaration.Rule = ClassKeyTerm + Identifier + ExtendsOpt + ClassModifiers + ";";
 
             var Program = new NonTerminal("Program", typeof(Program));
-            Program.Rule = Declarations + ClassDeclaration + PreFunctionDeclarations + FuncStateConstDeclarations;
+            Program.Rule = Declarations + ClassDeclaration + PreFunctionDeclarations + FuncStateConstDeclarations + DefaultProperties;
 
             Root = Program;
 
             RegisterBracePair("(", ")");
             RegisterBracePair("[", "]");
-            //RegisterBracePair("<", ">");  // TODO: complains about macing brace
+            //RegisterBracePair("<", ">");  // TODO: complains about matching brace
 
             MarkPunctuation(":", ";", ",", "(", ")", "<", ">", "=", "[", "]", "{", "}");
             MarkTransient(Literal, PreClassDeclaration, VarType, VarStructEnumConst, FunctionModifier, FunctionArgumentModifer, Primary, Atom);
