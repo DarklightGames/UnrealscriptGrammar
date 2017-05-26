@@ -38,8 +38,8 @@ namespace Unrealscript
             Literal.Rule = Number | String | Name | "true" | "false" | "none" | Vector;
             #endregion
 
-            var ExtendsOpt = new NonTerminal("ExtendsOpt", typeof(AuxiliaryNode));
-            ExtendsOpt.Rule = Empty | ToTerm("extends") + Identifier;
+            var Extends = new NonTerminal("Extends", typeof(AuxiliaryNode));
+            Extends.Rule = ToTerm("extends") + Identifier;
 
             // Key terms
             var ClassKeyTerm = ToTerm("class");
@@ -124,7 +124,6 @@ namespace Unrealscript
             Class.Rule = ToTerm("class") + "<" + Identifier + ">";
 
             Type.Rule = ByteTerm | IntTerm | BoolTerm | FloatTerm | StringTerm | NameTerm | Array | Class | Identifier;
-            var TypeOpt = new NonTerminal("Type?", Empty | Type);
             #endregion
 
             // Struct
@@ -143,25 +142,20 @@ namespace Unrealscript
             ArraySize.Rule = "[" + Integer + "]" |
                              "[" + Identifier + "]";
 
-            var ArraySizeOpt = new NonTerminal("ArraySize?", typeof(AuxiliaryNode));
-            ArraySizeOpt.Rule = Empty | ArraySize;
-
-            var VarEditOpt = new NonTerminal("VarEdit", typeof(AuxiliaryNode));
-            VarEditOpt.Rule = Empty |
-                            "(" + Identifier + ")" |
-                            "(" + ")";
+            var VarEdit = new NonTerminal("VarEdit", typeof(AuxiliaryNode));
+            VarEdit.Rule = "(" + Identifier.Q() + ")";
 
             var VarType = new NonTerminal("VarType");
             VarType.Rule = Type | Struct | Enum;
 
             var VarName = new NonTerminal("VarName");
-            VarName.Rule = Identifier + ArraySizeOpt;
+            VarName.Rule = Identifier + ArraySize.Q();
 
             var VarNames = new NonTerminal("VarName+");
             VarNames.Rule = MakePlusRule(VarNames, ToTerm(","), VarName);
 
             var Var = new NonTerminal("Var", typeof(Variable));
-            Var.Rule = ToTerm("var") + VarEditOpt + VarModifiers + VarType + VarNames + ";";
+            Var.Rule = ToTerm("var") + VarEdit.Q() + VarModifiers + VarType + VarNames + ";";
 
             var Vars = new NonTerminal("Var+", typeof(AuxiliaryNode));
             Vars.Rule = MakeStarRule(Vars, Var);
@@ -271,11 +265,8 @@ namespace Unrealscript
 
             Attribute.Rule = Primary + "." + Primary;
 
-            var ExpressionOpt = new NonTerminal("ExpressionOpt");
-            ExpressionOpt.Rule = Expression | Empty;
-
             var Return = new NonTerminal("Return");
-            Return.Rule = ToTerm("return") + ExpressionOpt;
+            Return.Rule = ToTerm("return") + Expression.Q();
 
             var SimpleStatement = new NonTerminal("SimpleStatement");
             SimpleStatement.Rule = Return | ToTerm("break") | ToTerm("continue") | Assignment /*| Goto*/ | Expression;
@@ -294,8 +285,8 @@ namespace Unrealscript
             Statements.Rule = MakeStarRule(Statements, Statement);
 
             var For = new NonTerminal("For");
-            For.Rule = ToTerm("for") + "(" + SimpleStatements + ";" + ExpressionOpt + ";" + SimpleStatement + ")" + Statement |
-                       ToTerm("for") + "(" + SimpleStatements + ";" + ExpressionOpt + ";" + SimpleStatement + ")" + "{" + Statements + "}";
+            For.Rule = ToTerm("for") + "(" + SimpleStatements + ";" + Expression.Q() + ";" + SimpleStatement + ")" + "{" + Statements + "}" |
+                       ToTerm("for") + "(" + SimpleStatements + ";" + Expression.Q() + ";" + SimpleStatement + ")" + Statement;
 
             var ForEach = new NonTerminal("ForEeach");
             ForEach.Rule = ToTerm("foreach") + Primary + Statement |
@@ -320,12 +311,11 @@ namespace Unrealscript
 
             var Else = new NonTerminal("Else");
             Else.Rule = ToTerm("else") + Statement |
-                        ToTerm("else") + "{" + Statements + "}" |
-                        Empty;
+                        ToTerm("else") + "{" + Statements + "}";
 
             var If = new NonTerminal("If");
-            If.Rule = ToTerm("if") + "(" + Expression + ")" + Statement + ElseIfs + Else |
-                      ToTerm("if") + "(" + Expression + ")" + "{" + Statements + "}" + ElseIfs + Else;
+            If.Rule = ToTerm("if") + "(" + Expression + ")" + Statement + ElseIfs + Else.Q() |
+                      ToTerm("if") + "(" + Expression + ")" + "{" + Statements + "}" + ElseIfs + Else.Q();
 
             var DefaultCaseLabel = new RegexBasedTerminal("default\\s*:");
 
@@ -348,17 +338,20 @@ namespace Unrealscript
             var Locals = new NonTerminal("Local*", typeof(AuxiliaryNode));
             Locals.Rule = MakeStarRule(Locals, Local);
 
+            var Ignores = new NonTerminal("Ignores", typeof(AuxiliaryNode));
+            Ignores.Rule = ToTerm("ignores") + Identifiers;
+
             var FunctionModifier = new NonTerminal("FunctionModifier");
             FunctionModifier.Rule = ToTerm("exec") |
-                ToTerm("final") |
-                ToTerm("iterator") |
-                ToTerm("latent") |
-                ToTerm("native") |
-                ToTerm("simulated") |
-                ToTerm("singular") |
-                ToTerm("static") |
-                ToTerm("private") |
-                ToTerm("protected");
+                                    ToTerm("final") |
+                                    ToTerm("iterator") |
+                                    ToTerm("latent") |
+                                    ToTerm("native") |
+                                    ToTerm("simulated") |
+                                    ToTerm("singular") |
+                                    ToTerm("static") |
+                                    ToTerm("private") |
+                                    ToTerm("protected");
             var FunctionModifiers = new NonTerminal("FunctionModifier*", typeof(AuxiliaryNode));
             FunctionModifiers.Rule = MakeStarRule(FunctionModifiers, FunctionModifier);
 
@@ -372,7 +365,7 @@ namespace Unrealscript
             FunctionArgumentModifers.Rule = MakeStarRule(FunctionArgumentModifers, FunctionArgumentModifer);
 
             var FunctionArgument = new NonTerminal("FunctionArgument", typeof(FunctionArgument));
-            FunctionArgument.Rule = FunctionArgumentModifers + Type + Identifier + ArraySizeOpt;
+            FunctionArgument.Rule = FunctionArgumentModifers + Type + Identifier + ArraySize.Q();
 
             var FunctionArguments = new NonTerminal("FunctionArgument*", typeof(AuxiliaryNode));
             FunctionArguments.Rule = MakeStarRule(FunctionArguments, ToTerm(","), FunctionArgument);
@@ -386,11 +379,20 @@ namespace Unrealscript
                                        FunctionDefinition + "{" + Locals + Statements + "}";
             #endregion
 
-            // END MEAT
+            #region States
+            var StateDeclaration = new NonTerminal("StateDeclaration", typeof(AuxiliaryNode));
+            StateDeclaration.Rule = Const | FunctionDeclaration;
+
+            var StateDeclarations = new NonTerminal("StateDeclaration*", typeof(AuxiliaryNode));
+            StateDeclarations.Rule = MakeStarRule(StateDeclarations, StateDeclaration);
+
+            var State = new NonTerminal("State", typeof(AuxiliaryNode));
+            State.Rule = ToTerm("state") + Identifier + "{" + Ignores.Q() + StateDeclarations + "}";
+            #endregion
 
             // funcstateconst
             var FunctionStateConst = new NonTerminal("FunctionStateConst");
-            FunctionStateConst.Rule = FunctionDeclaration | Const; // TODO: add state
+            FunctionStateConst.Rule = FunctionDeclaration | Const | State; // TODO: add state
 
             var FuncStateConstDeclarations = new NonTerminal("FuncStateConstDeclarations", typeof(AuxiliaryNode));
             FuncStateConstDeclarations.Rule = MakeStarRule(Declarations, FunctionStateConst);
@@ -457,7 +459,7 @@ namespace Unrealscript
             ClassModifiers.Rule = MakeStarRule(ClassModifiers, ClassModifier);
 
             var ClassDeclaration = new NonTerminal("ClassDeclaration", typeof(ClassDeclaration));
-            ClassDeclaration.Rule = ClassKeyTerm + Identifier + ExtendsOpt + ClassModifiers + ";";
+            ClassDeclaration.Rule = ClassKeyTerm + Identifier + Extends.Q() + ClassModifiers + ";";
 
             var Program = new NonTerminal("Program", typeof(Program));
             Program.Rule = Declarations + ClassDeclaration + PreFunctionDeclarations + FuncStateConstDeclarations + DefaultProperties;
