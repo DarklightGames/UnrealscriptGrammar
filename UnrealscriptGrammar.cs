@@ -198,7 +198,7 @@ namespace Unrealscript
             Subscription.Rule = Primary + "[" + Expression + "]";
 
             var Arguments = new NonTerminal("Argument*");
-            Arguments.Rule = MakeStarRule(Arguments, ToTerm(","), Expression);
+            Arguments.Rule = MakeStarRule(Arguments, ToTerm(","), Expression.Q());
 
             var Call = new NonTerminal("Call");
             Call.Rule = Identifier + "(" + Arguments + ")" |
