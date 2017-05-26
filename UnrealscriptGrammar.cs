@@ -301,6 +301,12 @@ namespace Unrealscript
             ForEach.Rule = ToTerm("foreach") + Primary + Statement |
                            ToTerm("foreach") + Primary + "{" + Statements + "}";
 
+            var Until = new NonTerminal("Until");
+            Until.Rule = ToTerm("until") + "(" + Expression + ")" + ToTerm(";").Q();
+
+            var Do = new NonTerminal("Do");
+            Do.Rule = ToTerm("do") + "{" + Statements + "}" + Until.Q();
+
             var While = new NonTerminal("While");
             While.Rule = ToTerm("while") + "(" + Expression + ")" + Statement |
                          ToTerm("while") + "(" + Expression + ")" + "{" + Statements + "}";
@@ -333,7 +339,7 @@ namespace Unrealscript
             var Switch = new NonTerminal("Switch");
             Switch.Rule = ToTerm("switch") + "(" + Expression + ")" + "{" + SwitchCases + "}";
 
-            CompoundStatement.Rule = For | ForEach | While | If | Switch/* | Do*/;
+            CompoundStatement.Rule = For | ForEach | While | If | Switch | Do;
 
             #region Functions
             var Local = new NonTerminal("Local", typeof(Local));
