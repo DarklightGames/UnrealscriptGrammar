@@ -366,7 +366,7 @@ namespace Unrealscript
             FunctionArgumentModifers.Rule = MakeStarRule(FunctionArgumentModifers, FunctionArgumentModifer);
 
             var FunctionArgument = new NonTerminal("FunctionArgument", typeof(FunctionArgument));
-            FunctionArgument.Rule = FunctionArgumentModifers + Type + Identifier;
+            FunctionArgument.Rule = FunctionArgumentModifers + Type + Identifier + ArraySizeOpt;
 
             var FunctionArguments = new NonTerminal("FunctionArgument*", typeof(AuxiliaryNode));
             FunctionArguments.Rule = MakeStarRule(FunctionArguments, ToTerm(","), FunctionArgument);
