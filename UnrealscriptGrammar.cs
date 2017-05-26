@@ -321,9 +321,11 @@ namespace Unrealscript
             If.Rule = ToTerm("if") + "(" + Expression + ")" + Statement + ElseIfs + Else |
                       ToTerm("if") + "(" + Expression + ")" + "{" + Statements + "}" + ElseIfs + Else;
 
+            var DefaultCaseLabel = new RegexBasedTerminal("default\\s*:");
+
             var SwitchCase = new NonTerminal("SwitchCase");
             SwitchCase.Rule = ToTerm("case") + Atom + ":" + Statements |
-                              ToTerm("default:") + Statements;
+                              DefaultCaseLabel + Statements;
 
             var SwitchCases = new NonTerminal("SwitchCase*");
             SwitchCases.Rule = MakeStarRule(SwitchCases, SwitchCase);
