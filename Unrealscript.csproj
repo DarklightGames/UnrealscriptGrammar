@@ -47,6 +47,8 @@
     <Compile Include="Ast\ClassDeclaration.cs" />
     <Compile Include="Ast\Const.cs" />
     <Compile Include="Ast\DefaultProperties.cs" />
+    <Compile Include="Ast\DefaultPropertiesAssignment.cs" />
+    <Compile Include="Ast\DefaultPropertiesKey.cs" />
     <Compile Include="Ast\Enum.cs" />
     <Compile Include="Ast\Function.cs" />
     <Compile Include="Ast\FunctionArgument.cs" />
@@ -57,6 +59,7 @@
     <Compile Include="Ast\Struct.cs" />
     <Compile Include="Ast\Type.cs" />
     <Compile Include="Ast\Variable.cs" />
+    <Compile Include="Ast\VariableName.cs" />
     <Compile Include="Ast\Vector.cs" />
     <Compile Include="UnrealscriptGrammar.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -2,10 +2,6 @@
 using Irony.Parsing;
 using Unrealscript.Ast;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Unrealscript
 {
@@ -37,39 +33,17 @@ namespace Unrealscript
             var Literal = new NonTerminal("Literal");
             Literal.Rule = Number | String | Name | "true" | "false" | "none" | Vector;
             #endregion
+            
+            var VarEdit = new NonTerminal("VarEdit", typeof(AuxiliaryNode));
+            VarEdit.Rule = "(" + Identifier + ")" |
+                           "(" + ")";
+            var VarEditOpt = new NonTerminal("VarEdit?", typeof(AuxiliaryNode));
+            VarEditOpt.Rule = Empty | VarEdit;
 
             var Extends = new NonTerminal("Extends", typeof(AuxiliaryNode));
             Extends.Rule = ToTerm("extends") + Identifier;
 
-            // Key terms
-            var ClassKeyTerm = ToTerm("class");
-            var ExtendsKeyTerm = ToTerm("extends");
-            var AbstractKeyTerm = ToTerm("abstract");
-            var ConfigKeyTerm = ToTerm("config");
-            var NativeKeyTerm = ToTerm("native");
-            var NativeReplicationKeyTerm = ToTerm("nativereplication");
-            var NoNativeReplicationKeyTerm = ToTerm("nonativereplication");
-            var SafeReplaceKeyTerm = ToTerm("safereplace");
-            var WithinKeyTerm = ToTerm("within");
-            var PerObjectConfigKeyTerm = ToTerm("perobjectconfig");
-            var TransientKeyTerm = ToTerm("transient");
-            var NoExportKeyTerm = ToTerm("noexport");
-            var DependsOnKeyTerm = ToTerm("dependson");
-            var ExportStructsKeyTerm = ToTerm("exportstructs");
-            var CacheExemptKeyTerm = ToTerm("cacheexempt");
-            var HideDropDownKeyTerm = ToTerm("hidedropdown");
-            var ParseConfigKeyTerm = ToTerm("parseconfig");
-            var CollapseCategoriesKeyTerm = ToTerm("collapsecategories");
-            var DontCollapseCategoriesKeyTerm = ToTerm("dontcollapsecategories");
-            var HideCategoriesKeyTerm = ToTerm("hidecategories");
-            var ShowCategoriesKeyTerm = ToTerm("showcategories");
-            var PlaceableKeyTerm = ToTerm("placeable");
-            var NotPlaceableKeyTerm = ToTerm("notplaceable");
-            var EditInlineNewKeyTerm = ToTerm("editinlinenew");
-            var NotEditInlineNewKeyTerm = ToTerm("noteditinlinenew");
-            var InstancedKeyTerm = ToTerm("instanced");
-            
-            // Variables
+            #region Variables
             var VarModifier = new NonTerminal("VarModifier", typeof(Modifier));
             VarModifier.Rule = ToTerm("config") |
                                 ToTerm("const") |
@@ -89,18 +63,20 @@ namespace Unrealscript
 
             var VarModifiers = new NonTerminal("VarModifier*", typeof(AuxiliaryNode));
             VarModifiers.Rule = MakeStarRule(VarModifiers, VarModifier);
+            #endregion
 
+            #region Comments
             var SingleLineComment = new CommentTerminal("SingleLineComment", "//", "\n");
             var MultiLineComment = new CommentTerminal("MultiLineComment", "/*", "*/");
             NonGrammarTerminals.Add(SingleLineComment);
             NonGrammarTerminals.Add(MultiLineComment);
+            #endregion
 
             var Identifiers = new NonTerminal("Identifiers", typeof(AuxiliaryNode));
             Identifiers.Rule = MakePlusRule(Identifiers, ToTerm(","), Identifier);
 
-            var ConstTerm = ToTerm("const");
             var Const = new NonTerminal("Const", typeof(Const));
-            Const.Rule = ConstTerm + Identifier + "=" + Literal + ";";
+            Const.Rule = ToTerm("const") + Identifier + "=" + Literal + ";";
 
             var PreClassDeclaration = new NonTerminal("PreClassDeclaration");
             PreClassDeclaration.Rule = Const;
@@ -126,43 +102,54 @@ namespace Unrealscript
             Type.Rule = ByteTerm | IntTerm | BoolTerm | FloatTerm | StringTerm | NameTerm | Array | Class | Identifier;
             #endregion
 
-            // Struct
-            var StructTerm = ToTerm("struct");
+            var ArraySize = new NonTerminal("ArraySize", typeof(AuxiliaryNode));
+            ArraySize.Rule = Empty |
+                             "[" + Integer + "]" |
+                             "[" + Identifier + "]";
+
+
+            #region Struct
+            var StructVarEdit = new NonTerminal("StructVarEdit");
+            StructVarEdit.Rule = Empty | "(" + ")";
+
+            var StructVar = new NonTerminal("StructVar", typeof(Variable));
+            StructVar.Rule = ToTerm("var") + StructVarEdit + Identifier + ArraySize + ";";
+
+            var StructVars = new NonTerminal("StructVar+");
+            StructVars.Rule = MakePlusRule(StructVars, StructVar);
+
             var Struct = new NonTerminal("Struct", typeof(Struct));
-            Struct.Rule = StructTerm + Identifier + "{" + "}";
+            Struct.Rule = ToTerm("struct") + Identifier + "{" + StructVars + "}";
+
+            var StructStatement = new NonTerminal("StructStatement", typeof(AuxiliaryNode));
+            StructStatement.Rule = Struct + ";";
+            #endregion
 
             // Enum
             var EnumTerm = ToTerm("enum");
             var Enum = new NonTerminal("Enum", typeof(Ast.Enum));
             Enum.Rule = EnumTerm + Identifier + "{" + Identifiers + "}";
 
+            var EnumStatement = new NonTerminal("EnumStatement", typeof(AuxiliaryNode));
+            EnumStatement.Rule = Enum + ";";
+
             #region Variables
             // Variables
-            var ArraySize = new NonTerminal("ArraySize", typeof(AuxiliaryNode));
-            ArraySize.Rule = "[" + Integer + "]" |
-                             "[" + Identifier + "]";
-
-            var VarEdit = new NonTerminal("VarEdit", typeof(AuxiliaryNode));
-            VarEdit.Rule = "(" + Identifier.Q() + ")";
-
             var VarType = new NonTerminal("VarType");
-            VarType.Rule = Type | Struct | Enum;
-
-            var VarName = new NonTerminal("VarName");
-            VarName.Rule = Identifier + ArraySize.Q();
-
-            var VarNames = new NonTerminal("VarName+");
-            VarNames.Rule = MakePlusRule(VarNames, ToTerm(","), VarName);
-
+            var VarName = new NonTerminal("VarName", typeof(VariableName));
+            var VarNames = new NonTerminal("VarName+", typeof(AuxiliaryNode));
             var Var = new NonTerminal("Var", typeof(Variable));
-            Var.Rule = ToTerm("var") + VarEdit.Q() + VarModifiers + VarType + VarNames + ";";
-
             var Vars = new NonTerminal("Var+", typeof(AuxiliaryNode));
+
+            VarType.Rule = Type | Struct | Enum;
+            VarName.Rule = Identifier + ArraySize;
+            VarNames.Rule = MakePlusRule(VarNames, ToTerm(","), VarName);
+            Var.Rule = ToTerm("var") + VarEditOpt + VarModifiers + VarType + VarNames + ";";
             Vars.Rule = MakeStarRule(Vars, Var);
             #endregion
 
             var VarStructEnumConst = new NonTerminal("VarStructEnumConst");
-            VarStructEnumConst.Rule = Var | Struct | Enum | Const;
+            VarStructEnumConst.Rule = Var | StructStatement | EnumStatement | Const;
 
             var PreFunctionDeclarations = new NonTerminal("VarStructEnumConst*", typeof(AuxiliaryNode));
             PreFunctionDeclarations.Rule = MakeStarRule(PreFunctionDeclarations, VarStructEnumConst);
@@ -365,7 +352,7 @@ namespace Unrealscript
             FunctionArgumentModifers.Rule = MakeStarRule(FunctionArgumentModifers, FunctionArgumentModifer);
 
             var FunctionArgument = new NonTerminal("FunctionArgument", typeof(FunctionArgument));
-            FunctionArgument.Rule = FunctionArgumentModifers + Type + Identifier + ArraySize.Q();
+            FunctionArgument.Rule = FunctionArgumentModifers + Type + Identifier + ArraySize;
 
             var FunctionArguments = new NonTerminal("FunctionArgument*", typeof(AuxiliaryNode));
             FunctionArguments.Rule = MakeStarRule(FunctionArguments, ToTerm(","), FunctionArgument);
@@ -398,34 +385,33 @@ namespace Unrealscript
             FuncStateConstDeclarations.Rule = MakeStarRule(Declarations, FunctionStateConst);
 
             var ClassModifier = new NonTerminal("ClassModifier", typeof(ClassDeclaration.Modifier));
-            ClassModifier.Rule = AbstractKeyTerm |
-                CacheExemptKeyTerm |
-                ConfigKeyTerm + "(" + Identifier + ")" |
-                DependsOnKeyTerm + "(" + Identifier + ")" |
-                InstancedKeyTerm |
-                ParseConfigKeyTerm |
-                PerObjectConfigKeyTerm |
-                SafeReplaceKeyTerm |
-                TransientKeyTerm |
-                CollapseCategoriesKeyTerm + "(" + Identifiers + ")" |
-                DontCollapseCategoriesKeyTerm + "(" + Identifiers + ")" |
-                EditInlineNewKeyTerm |
-                NotEditInlineNewKeyTerm |
-                HideCategoriesKeyTerm + "(" + Identifiers + ")" |
-                ShowCategoriesKeyTerm + "(" + Identifiers + ")" |
-                HideDropDownKeyTerm |
-                PlaceableKeyTerm |
-                NotPlaceableKeyTerm |
-                ExportStructsKeyTerm |
-                NativeKeyTerm |
-                NativeReplicationKeyTerm |
-                NoExportKeyTerm;
+            ClassModifier.Rule = ToTerm("abstract") |
+                ToTerm("cacheexempt") |
+                ToTerm("config") + "(" + Identifier + ")" |
+                ToTerm("dependson") + "(" + Identifier + ")" |
+                ToTerm("instanced") |
+                ToTerm("parseconfig") |
+                ToTerm("perobjectconfig") |
+                ToTerm("safereplace") |
+                ToTerm("transient") |
+                ToTerm("collapsecategories") + "(" + Identifiers + ")" |
+                ToTerm("dontcollapsecategories") + "(" + Identifiers + ")" |
+                ToTerm("editinline") |
+                ToTerm("noteditinline") |
+                ToTerm("hidecategories") + "(" + Identifiers + ")" |
+                ToTerm("showcategories") + "(" + Identifiers + ")" |
+                ToTerm("hidedropdown") |
+                ToTerm("placeable") |
+                ToTerm("notplaceable") |
+                ToTerm("exportstructs") |
+                ToTerm("native") |
+                ToTerm("nativereplication") |
+                ToTerm("noexport");
 
             #region DefaultProperties
-
-            var DefaultPropertiesKey = new NonTerminal("DefaultPropertiesKey");
+            var DefaultPropertiesKey = new NonTerminal("DefaultPropertiesKey", typeof(DefaultPropertiesKey));
             var DefaultPropertiesAssignmentValue = new NonTerminal("DefaultPropertiesAssignmentValue");
-            var DefaultPropertiesAssignment = new NonTerminal("DefaultPropertiesAssignment");
+            var DefaultPropertiesAssignment = new NonTerminal("DefaultPropertiesAssignment", typeof(DefaultPropertiesAssignment));
             var DefaultPropertiesAssignments = new NonTerminal("DefaultPropertiesAssignments", typeof(AuxiliaryNode));
             var DefaultPropertiesObjectArguments = new NonTerminal("DefaultPropertiesObjectArguments", typeof(AuxiliaryNode));
             var DefaultPropertiesArrayArgument = new NonTerminal("DefaultPropertiesArrayArgument");
@@ -459,7 +445,7 @@ namespace Unrealscript
             ClassModifiers.Rule = MakeStarRule(ClassModifiers, ClassModifier);
 
             var ClassDeclaration = new NonTerminal("ClassDeclaration", typeof(ClassDeclaration));
-            ClassDeclaration.Rule = ClassKeyTerm + Identifier + Extends.Q() + ClassModifiers + ";";
+            ClassDeclaration.Rule = ToTerm("class") + Identifier + Extends + ClassModifiers + ";";
 
             var Program = new NonTerminal("Program", typeof(Program));
             Program.Rule = Declarations + ClassDeclaration + PreFunctionDeclarations + FuncStateConstDeclarations + DefaultProperties;
@@ -470,8 +456,8 @@ namespace Unrealscript
             RegisterBracePair("[", "]");
             //RegisterBracePair("<", ">");  // TODO: complains about matching brace
 
-            MarkPunctuation(":", ";", ",", "(", ")", "<", ">", "=", "[", "]", "{", "}");
-            MarkTransient(Literal, PreClassDeclaration, VarType, VarStructEnumConst, FunctionModifier, FunctionArgumentModifer, Primary, Atom);
+            MarkPunctuation(".", ":", ";", ",", "(", ")", "<", ">", "=", "[", "]", "{", "}");
+            MarkTransient(Literal, PreClassDeclaration, VarType, VarStructEnumConst, FunctionModifier, FunctionArgumentModifer, Primary, Atom, DefaultPropertiesAssignmentValue, DefaultPropertiesDeclaration);
 
             LanguageFlags = LanguageFlags.CreateAst;
         }

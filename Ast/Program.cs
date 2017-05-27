@@ -14,6 +14,7 @@ namespace Unrealscript.Ast
     {
         public IList<Const> Constants { get; }
         public IList<Variable> Variables { get; }
+        public DefaultProperties DefaultProperties { get; private set; }
 
         public Program()
         {
@@ -44,6 +45,11 @@ namespace Unrealscript.Ast
                         variable.Parent = this;
                     }
                 }
+                else if (node.AstNode is DefaultProperties)
+                {
+                    DefaultProperties = (node.AstNode as DefaultProperties);
+                    DefaultProperties.Parent = this;
+                }
             }
         }
 
@@ -58,6 +64,8 @@ namespace Unrealscript.Ast
             {
                 yield return variable;
             }
+
+            yield return DefaultProperties;
         }
     }
 }
