@@ -9,11 +9,13 @@ namespace Unrealscript
     {
         public UnrealscriptGrammar() : base(false)
         {
-            var Identifier = new IdentifierTerminal("Identifier");
+            #region Identifiers
+            var Identifier = new IdentifierTerminal("Identifer");
+            #endregion
 
             #region Literals
             // Number
-            var Number = new NumberLiteral("Number")
+            var Number = new NumberLiteral("Number", NumberOptions.AllowSign)
             {
                 DefaultIntTypes = new[] { TypeCode.Int32 },
                 DefaultFloatType = TypeCode.Single
@@ -42,6 +44,9 @@ namespace Unrealscript
 
             var Extends = new NonTerminal("Extends", typeof(AuxiliaryNode));
             Extends.Rule = ToTerm("extends") + Identifier;
+            var ExtendsOpt = Extends.Q();
+
+            var CompilerDirective = new RegexBasedTerminal("#(\\w+)\\s+(.+)");
 
             #region Variables
             var VarModifier = new NonTerminal("VarModifier", typeof(Modifier));
@@ -97,9 +102,12 @@ namespace Unrealscript
             Array.Rule = ToTerm("array") + "<" + Type + ">";
 
             var Class = new NonTerminal("Class", typeof(Ast.Class));
-            Class.Rule = ToTerm("class") + "<" + Identifier + ">";
+            Class.Rule = ToTerm("class") + "<" + Identifier + ">";  // TODO: won't work for A.Type
+            
+            var PackageIdentifier = new NonTerminal("PackageIdentifier");
+            PackageIdentifier.Rule = Identifier + "." + Identifier;
 
-            Type.Rule = ByteTerm | IntTerm | BoolTerm | FloatTerm | StringTerm | NameTerm | Array | Class | Identifier;
+            Type.Rule = ByteTerm | IntTerm | BoolTerm | FloatTerm | StringTerm | NameTerm | Array | Class | Identifier | PackageIdentifier;
             #endregion
 
             var ArraySize = new NonTerminal("ArraySize", typeof(AuxiliaryNode));
@@ -113,7 +121,7 @@ namespace Unrealscript
             StructVarEdit.Rule = Empty | "(" + ")";
 
             var StructVar = new NonTerminal("StructVar", typeof(Variable));
-            StructVar.Rule = ToTerm("var") + StructVarEdit + Identifier + ArraySize + ";";
+            StructVar.Rule = ToTerm("var") + StructVarEdit + Type + Identifier + ArraySize + ";";
 
             var StructVars = new NonTerminal("StructVar+");
             StructVars.Rule = MakePlusRule(StructVars, StructVar);
@@ -139,7 +147,7 @@ namespace Unrealscript
             var VarName = new NonTerminal("VarName", typeof(VariableName));
             var VarNames = new NonTerminal("VarName+", typeof(AuxiliaryNode));
             var Var = new NonTerminal("Var", typeof(Variable));
-            var Vars = new NonTerminal("Var+", typeof(AuxiliaryNode));
+            var Vars = new NonTerminal("Var*", typeof(AuxiliaryNode));
 
             VarType.Rule = Type | Struct | Enum;
             VarName.Rule = Identifier + ArraySize;
@@ -373,8 +381,18 @@ namespace Unrealscript
             var StateDeclarations = new NonTerminal("StateDeclaration*", typeof(AuxiliaryNode));
             StateDeclarations.Rule = MakeStarRule(StateDeclarations, StateDeclaration);
 
+            var Label = new NonTerminal("Label");
+            Label.Rule = Identifier + ":" + Statements;
+
+            var LabelOpt = new NonTerminal("LabelOpt");
+            LabelOpt.Rule = Label.Q();
+
             var State = new NonTerminal("State", typeof(AuxiliaryNode));
-            State.Rule = ToTerm("state") + Identifier + "{" + Ignores.Q() + StateDeclarations + "}";
+            var StateModifier = new NonTerminal("StateModifier");
+            var StateModifiers = new NonTerminal("StateModifier*", typeof(AuxiliaryNode));
+            StateModifier.Rule = ToTerm("simulated") | ToTerm("auto");
+            StateModifiers.Rule = MakeStarRule(StateModifiers, StateModifier);
+            State.Rule = StateModifiers + ToTerm("state") + Identifier + ExtendsOpt + "{" + Ignores.Q() + StateDeclarations + LabelOpt + "}";
             #endregion
 
             // funcstateconst
@@ -408,6 +426,17 @@ namespace Unrealscript
                 ToTerm("nativereplication") |
                 ToTerm("noexport");
 
+            #region Replication
+            var Replication = new NonTerminal("Replication");
+            var ReplicationCondition = new NonTerminal("ReplicationCondition");
+            var ReplicationConditions = new NonTerminal("ReplicationCondition");
+            var ReplicationReliability = new NonTerminal("ReplicationReliability");
+            ReplicationConditions.Rule = MakeStarRule(ReplicationConditions, ReplicationCondition);
+            ReplicationCondition.Rule = ReplicationReliability + ToTerm("if") + "(" + Expression + ")" + Identifiers + ";";
+            ReplicationReliability.Rule = ToTerm("reliable") | ToTerm("unreliable");
+            Replication.Rule = Empty | ToTerm("replication") + "{" + ReplicationConditions + "}";
+            #endregion
+
             #region DefaultProperties
             var DefaultPropertiesKey = new NonTerminal("DefaultPropertiesKey", typeof(DefaultPropertiesKey));
             var DefaultPropertiesAssignmentValue = new NonTerminal("DefaultPropertiesAssignmentValue");
@@ -424,7 +453,7 @@ namespace Unrealscript
             var DefaultPropertiesObjectAssignments = new NonTerminal("DefaultPropertiesObjectAssignments", typeof(AuxiliaryNode));
             var DefaultProperties = new NonTerminal("DefaultProperties", typeof(DefaultProperties));
 
-            DefaultPropertiesKey.Rule = Identifier | Identifier + "(" + Integer + ")";
+            DefaultPropertiesKey.Rule = Identifier | Identifier + "(" + Integer + ")" | Identifier + "[" + Integer + "]";
             DefaultPropertiesObjectAssignment.Rule = DefaultPropertiesKey + "=" + DefaultPropertiesAssignmentValue;
             DefaultPropertiesObjectAssignments.Rule = MakeStarRule(DefaultPropertiesObjectAssignments, DefaultPropertiesObjectAssignment);
             DefaultPropertiesObject.Rule = ToTerm("Begin") + ToTerm("Object") + DefaultPropertiesObjectAssignments + ToTerm("End") + ToTerm("Object");
@@ -448,7 +477,7 @@ namespace Unrealscript
             ClassDeclaration.Rule = ToTerm("class") + Identifier + Extends + ClassModifiers + ";";
 
             var Program = new NonTerminal("Program", typeof(Program));
-            Program.Rule = Declarations + ClassDeclaration + PreFunctionDeclarations + FuncStateConstDeclarations + DefaultProperties;
+            Program.Rule = Declarations + ClassDeclaration + PreFunctionDeclarations + Replication + FuncStateConstDeclarations + DefaultProperties;
 
             Root = Program;
 
@@ -459,7 +488,7 @@ namespace Unrealscript
             MarkPunctuation(".", ":", ";", ",", "(", ")", "<", ">", "=", "[", "]", "{", "}");
             MarkTransient(Literal, PreClassDeclaration, VarType, VarStructEnumConst, FunctionModifier, FunctionArgumentModifer, Primary, Atom, DefaultPropertiesAssignmentValue, DefaultPropertiesDeclaration);
 
-            LanguageFlags = LanguageFlags.CreateAst;
+            LanguageFlags = LanguageFlags.None;
         }
     }
 }
